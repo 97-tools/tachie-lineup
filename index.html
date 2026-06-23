@@ -367,12 +367,14 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(229,140,155,
   gap: 14px;
   overflow-x: auto;
   overflow-y: visible;
+  --stage-track-w: 100%;
 }
 
 .lineup-stage::before {
   content: "";
   position: absolute;
-  left: 0; right: 0; bottom: 0;
+  left: 0; right: auto; bottom: 0;
+  width: max(100%, var(--stage-track-w));
   height: calc(var(--ground) + 18px);
   background: linear-gradient(180deg, transparent, rgba(238,207,195,0.58));
   pointer-events: none;
@@ -381,7 +383,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(229,140,155,
 .lineup-stage::after {
   content: "";
   position: absolute;
-  left: 0; right: 0;
+  left: 0; right: auto;
+  width: max(100%, var(--stage-track-w));
   bottom: var(--ground);
   border-top: 2px solid rgba(154,118,105,0.23);
   box-shadow: 0 10px 22px rgba(120,78,68,0.10);
@@ -882,6 +885,26 @@ fileInput.addEventListener("change", () => {
 });
 
 // ============================================================
+//  ステージ背景幅
+// ============================================================
+function updateStageTrackWidth(count) {
+  if (!lineupStage) return;
+  if (!count) {
+    lineupStage.style.setProperty("--stage-track-w", "100%");
+    return;
+  }
+
+  const cs = getComputedStyle(lineupStage);
+  const cardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--card-w")) || 160;
+  const gap = parseFloat(cs.columnGap || cs.gap) || 14;
+  const padL = parseFloat(cs.paddingLeft) || 0;
+  const padR = parseFloat(cs.paddingRight) || 0;
+  const contentW = padL + padR + count * cardW + Math.max(0, count - 1) * gap;
+  const minW = Math.max(contentW, lineupStage.clientWidth || 0);
+  lineupStage.style.setProperty("--stage-track-w", `${Math.ceil(minW)}px`);
+}
+
+// ============================================================
 //  ステージ描画（元JS流用）
 // ============================================================
 function renderStage() {
@@ -890,7 +913,10 @@ function renderStage() {
   const valid = characters.filter(c => c.imgURL && c.height > 0);
   stageEmpty.style.display = valid.length === 0 ? "flex" : "none";
   statusBar.textContent = `${valid.length}人表示中`;
-  if (valid.length === 0) return;
+  if (valid.length === 0) {
+    updateStageTrackWidth(0);
+    return;
+  }
 
   const ordered = [...valid];
 
@@ -917,6 +943,8 @@ function renderStage() {
     `;
     lineupStage.appendChild(card);
   });
+
+  updateStageTrackWidth(ordered.length);
 }
 
 // ============================================================
@@ -1030,14 +1058,17 @@ async function drawExportCanvas(chars) {
     const cx = SCALE_W + PAD_X + i * (CARD_W + GAP) + CARD_W / 2;
     const imgH = calcBodyHeightFor(char.height, EXPORT_MAX_PX);
     const scale = char.scale || 1;
-    const offY = char.offsetY || 0;
+    const offsetRatio = EXPORT_MAX_PX / getDisplayMaxPx();
+    const offY = (char.offsetY || 0) * offsetRatio;
 
     if (img) {
       const aspect = img.naturalWidth / img.naturalHeight;
       const drawH = imgH * scale;
       const drawW = drawH * aspect;
       const drawX = cx - drawW / 2;
-      const drawY = groundY - drawH + offY;
+      // Web側の CSS: transform: scale(...) translateY(...px) に近づけるため、
+      // translateY の量も出力倍率と拡大率に合わせる。
+      const drawY = groundY - drawH + offY * scale;
       ctx.drawImage(img, drawX, drawY, drawW, drawH);
     }
 
