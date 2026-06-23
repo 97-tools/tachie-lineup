@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>立ち絵身長比較ツール</title>
+<style>
+/* ===========================
+   リセット・ベース
+=========================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #fff7f4;
+  --bg-soft: #fffdf9;
+  --surface: rgba(255,255,255,0.78);
+  --surface-strong: #ffffff;
+  --surface-tint: #fff1ec;
+  --border: rgba(154,118,105,0.18);
+  --border-strong: rgba(154,118,105,0.28);
+  --text: #453734;
+  --text-strong: #2f2625;
+  --muted: #8f7470;
+  --accent: #e58c9b;
+  --accent-2: #8eb9d6;
+  --accent-3: #f0b36a;
+  --accent-dim: rgba(229,140,155,0.18);
+  --danger: #d86c73;
+  --success: #669f88;
+  --shadow: 0 18px 50px rgba(120,78,68,0.12);
+  --shadow-soft: 0 10px 24px rgba(120,78,68,0.09);
+  --ground: 64px;
+  --stage-h: 680px;
+  --card-w: 160px;
+  --radius: 22px;
+  --radius-sm: 13px;
+}
+
+html { background: var(--bg); }
+
+body {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(255,205,214,0.55), transparent 34%),
+    radial-gradient(circle at 92% 7%, rgba(185,221,238,0.58), transparent 30%),
+    linear-gradient(180deg, #fff7f4 0%, #fffdf9 48%, #f8f0ed 100%);
+  color: var(--text);
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+button, input { font: inherit; }
+button:focus-visible, input:focus-visible { outline: 3px solid rgba(229,140,155,0.28); outline-offset: 2px; }
+
+.app-header {
+  padding: 34px 28px 0;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.app-header h1 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: clamp(22px, 3vw, 34px);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: var(--text-strong);
+}
+
+.app-header h1::before {
+  content: "";
+  width: 14px;
+  height: 34px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  box-shadow: 0 8px 18px rgba(229,140,155,0.24);
+}
+
+.app-header p {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.app-body {
+  display: grid;
+  gap: 20px;
+  padding: 22px 16px 80px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ===== 追加パネル ===== */
+.add-panel,
+.stage-section {
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.72);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+
+.add-panel {
+  padding: 20px 22px 22px;
+}
+
+.stage-section {
+  padding: 18px;
+  overflow: hidden;
+}
+
+.add-panel-head,
+.stage-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.add-panel-head h2,
+.stage-section-head h2 {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-strong);
+  letter-spacing: 0.08em;
+}
+
+.add-panel-head h2::after,
+.stage-section-head h2::after {
+  content: "";
+  display: block;
+  width: 32px;
+  height: 3px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-3));
+}
+
+.add-panel-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+/* ===== キャラクターカード（入力） ===== */
+.char-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,248,245,0.96));
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px;
+  display: grid;
+  gap: 11px;
+  position: relative;
+  box-shadow: var(--shadow-soft);
+}
+
+.char-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.char-thumb {
+  width: 58px;
+  height: 82px;
+  border-radius: 14px;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(229,140,155,0.12), rgba(142,185,214,0.13)),
+    #fffdf9;
+  border: 1px dashed rgba(154,118,105,0.34);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.char-thumb:hover {
+  transform: translateY(-1px);
+  border-color: rgba(229,140,155,0.55);
+  box-shadow: 0 10px 20px rgba(229,140,155,0.14);
+}
+
+.char-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.char-thumb-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 9px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.char-info {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.char-card input[type="text"],
+.char-card input[type="number"] {
+  width: 100%;
+  height: 38px;
+  padding: 0 11px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-strong);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.char-card input:focus {
+  background: #ffffff;
+  border-color: rgba(229,140,155,0.62);
+  box-shadow: 0 0 0 4px rgba(229,140,155,0.13);
+}
+
+.char-card input::placeholder { color: #b19a96; }
+
+.char-adjust {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.char-adjust label {
+  display: grid;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.char-delete-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 27px;
+  height: 27px;
+  border: 1px solid rgba(216,108,115,0.20);
+  background: rgba(216,108,115,0.10);
+  color: var(--danger);
+  border-radius: 999px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: background 0.2s, transform 0.15s;
+  line-height: 1;
+}
+
+.char-delete-btn:hover { background: rgba(216,108,115,0.18); transform: rotate(8deg); }
+
+/* ===== ステージ ===== */
+.stage-wrap {
+  position: relative;
+  padding-left: 52px;
+}
+
+.height-scale {
+  position: absolute;
+  left: 0;
+  top: 20px;
+  bottom: var(--ground);
+  width: 44px;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.scale-mark {
+  position: absolute;
+  left: 0;
+  width: calc(100% + 14px);
+  border-top: 1px solid rgba(154,118,105,0.18);
+  transform: translateY(50%);
+}
+
+.scale-mark span {
+  position: absolute;
+  left: 0;
+  top: -9px;
+  font-size: 9px;
+  color: #a48782;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.lineup-stage {
+  position: relative;
+  min-height: calc(var(--stage-h) + var(--ground));
+  padding: 20px 28px var(--ground);
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  background:
+    linear-gradient(rgba(154,118,105,0.075) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(154,118,105,0.05) 1px, transparent 1px),
+    radial-gradient(circle at 80% 0%, rgba(142,185,214,0.24), transparent 32%),
+    radial-gradient(circle at 12% 4%, rgba(229,140,155,0.20), transparent 36%),
+    linear-gradient(180deg, #fffdf9 0%, #fff8f4 72%, #f5e9e4 100%);
+  background-size: 100% 34px, 34px 100%, auto, auto, auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.lineup-stage::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: calc(var(--ground) + 18px);
+  background: linear-gradient(180deg, transparent, rgba(238,207,195,0.58));
+  pointer-events: none;
+}
+
+.lineup-stage::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  bottom: var(--ground);
+  border-top: 2px solid rgba(154,118,105,0.23);
+  box-shadow: 0 10px 22px rgba(120,78,68,0.10);
+  pointer-events: none;
+}
+
+/* ===== 立ち絵カード（ステージ） ===== */
+.lineup-card {
+  flex: 0 0 auto;
+  width: var(--card-w);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 3;
+}
+
+.lineup-figure-wrap {
+  width: 100%;
+  height: var(--stage-h);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  overflow: visible;
+  position: relative;
+}
+
+.lineup-figure {
+  display: block;
+  width: auto;
+  max-width: none;
+  object-fit: contain;
+  object-position: center bottom;
+  filter:
+    drop-shadow(0 14px 18px rgba(93,61,52,0.25))
+    drop-shadow(0 0 10px rgba(255,255,255,0.52));
+  user-select: none;
+  -webkit-user-drag: none;
+  transform-origin: bottom center;
+}
+
+.lineup-label {
+  width: calc(100% + 12px);
+  margin-top: 10px;
+  padding: 8px 10px 10px;
+  border: 1px solid rgba(154,118,105,0.16);
+  border-radius: 15px;
+  background: rgba(255,255,255,0.86);
+  text-align: center;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 9px 18px rgba(120,78,68,0.10);
+  flex-shrink: 0;
+}
+
+.lineup-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-strong);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.lineup-sub {
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.lineup-empty {
+  flex: 1;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+  position: relative;
+  z-index: 2;
+}
+
+/* ===== ボタン共通 ===== */
+.btn {
+  height: 39px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.74);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s, border-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 7px 16px rgba(120,78,68,0.07);
+}
+
+.btn:hover {
+  background: #ffffff;
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(120,78,68,0.11);
+}
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity: 0.62; cursor: wait; transform: none; }
+
+.btn-primary {
+  background: linear-gradient(135deg, #ee9aaa, #e58c9b);
+  border-color: rgba(229,140,155,0.42);
+  color: #ffffff;
+}
+
+.btn-primary:hover { background: linear-gradient(135deg, #f0a6b4, #e58c9b); }
+
+.btn-ghost { background: rgba(255,255,255,0.55); }
+
+.btn-save {
+  background: linear-gradient(135deg, #88bea7, #6fa891);
+  border-color: rgba(102,159,136,0.34);
+  color: #ffffff;
+}
+
+.btn-save:hover { background: linear-gradient(135deg, #94c8b2, #6fa891); }
+
+input[type="file"] { display: none; }
+
+.status-bar {
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.62);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ===== モーダル ===== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(63,45,42,0.42);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(8px);
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: #fffdf9;
+  border: 1px solid rgba(255,255,255,0.80);
+  border-radius: var(--radius);
+  padding: 24px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: grid;
+  gap: 16px;
+  min-width: 320px;
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.modal h3 { font-size: 16px; font-weight: 800; color: var(--text-strong); }
+
+.modal-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.modal canvas {
+  display: block;
+  max-width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: #fffdf9;
+}
+
+.modal-foot {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+/* スクロールバー */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(154,118,105,0.28); border-radius: 999px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+@media (max-width: 640px) {
+  :root { --stage-h: 480px; --card-w: 120px; --ground: 52px; }
+  .app-header { padding: 20px 14px 0; }
+  .app-body { padding: 14px 10px 60px; gap: 14px; }
+  .add-panel, .stage-section { border-radius: 18px; }
+  .add-panel { padding: 14px; }
+  .stage-section { padding: 13px; }
+  .card-grid { grid-template-columns: 1fr; }
+  .stage-wrap { padding-left: 42px; }
+  .height-scale { width: 36px; }
+  .lineup-stage { padding-left: 18px; padding-right: 18px; gap: 10px; }
+  .btn { flex: 1 1 auto; }
+  .add-panel-actions { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>立ち絵身長比較ツール</h1>
+  <p>立ち絵画像・名前・身長・シナリオ名を入力して横並び比較。画像はブラウザ内のみで処理されます。</p>
+</header>
+
+<main class="app-body">
+
+  <section class="add-panel">
+    <div class="add-panel-head">
+      <h2>キャラクター一覧</h2>
+      <div class="add-panel-actions">
+        <button class="btn btn-primary" id="addCharBtn">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          キャラを追加
+        </button>
+        <button class="btn btn-ghost" id="clearAllBtn">すべて削除</button>
+      </div>
+    </div>
+    <div class="card-grid" id="cardGrid"></div>
+    <div id="emptyHint" style="padding:18px 0; color:var(--muted); font-size:13px; text-align:center;">
+      「キャラを追加」ボタンでキャラクターを登録してください
+    </div>
+  </section>
+
+  <section class="stage-section">
+    <div class="stage-section-head">
+      <h2>身長比較ステージ</h2>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <span class="status-bar" id="statusBar">0人表示中</span>
+        <button class="btn btn-save" id="exportBtn">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 6l3 3 3-3M2 11h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          画像を出力
+        </button>
+      </div>
+    </div>
+
+    <div class="stage-wrap">
+      <div class="height-scale" id="heightScale"></div>
+      <div class="lineup-stage" id="lineupStage">
+        <div class="lineup-empty" id="stageEmpty">
+          左パネルでキャラクターを追加すると、ここに身長比較が表示されます
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <h3>画像を出力</h3>
+    <p class="modal-desc">プレビューを確認してダウンロードしてください。<br>立ち絵と名前カードが含まれます。</p>
+    <canvas id="exportCanvas"></canvas>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="modalCloseBtn">閉じる</button>
+      <button class="btn btn-save" id="downloadBtn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 6l3 3 3-3M2 11h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        ダウンロード
+      </button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*">
+
+<script>
+// ============================================================
+//  データモデル
+// ============================================================
+let characters = [];
+let nextId = 1;
+let pendingCardId = null;
+
+const MAX_H_CM   = 220;
+const SCALE_FACTOR = 1.05; // 元JSから流用
+
+// DOM
+const cardGrid      = document.getElementById("cardGrid");
+const emptyHint     = document.getElementById("emptyHint");
+const addCharBtn    = document.getElementById("addCharBtn");
+const clearAllBtn   = document.getElementById("clearAllBtn");
+const lineupStage   = document.getElementById("lineupStage");
+const stageEmpty    = document.getElementById("stageEmpty");
+const heightScale   = document.getElementById("heightScale");
+const statusBar     = document.getElementById("statusBar");
+const exportBtn     = document.getElementById("exportBtn");
+const exportModal   = document.getElementById("exportModal");
+const exportCanvas  = document.getElementById("exportCanvas");
+const modalCloseBtn = document.getElementById("modalCloseBtn");
+const downloadBtn   = document.getElementById("downloadBtn");
+const fileInput     = document.getElementById("fileInput");
+
+// ============================================================
+//  高さ計算（元JS流用）
+// ============================================================
+function getDisplayMaxPx() {
+  return window.innerWidth <= 640 ? 480 : 680;
+}
+
+function cmToPx(cm) {
+  const clamped = Math.max(0, Math.min(Number(cm) || 0, MAX_H_CM));
+  return Math.round((clamped / MAX_H_CM) * getDisplayMaxPx());
+}
+
+function calcBodyHeight(cm) {
+  return Math.round(cmToPx(cm) * SCALE_FACTOR);
+}
+
+// ============================================================
+//  目盛り（元JS流用）
+// ============================================================
+function buildHeightScale() {
+  heightScale.innerHTML = "";
+  for (let cm = 0; cm <= MAX_H_CM; cm += 10) {
+    const bottomPx = cmToPx(cm);
+    const mark = document.createElement("div");
+    mark.className = "scale-mark";
+    const adj = cm === 0 ? 10 : 0;
+    mark.style.bottom = `${bottomPx + adj}px`;
+    mark.innerHTML = `<span>${cm}</span>`;
+    heightScale.appendChild(mark);
+  }
+}
+
+// ============================================================
+//  キャラクター追加
+// ============================================================
+function addCharacter() {
+  const id = nextId++;
+  characters.push({ id, name: "", scenario: "", height: 160, scale: 1.0, offsetY: 0, imgURL: "" });
+  renderCardGrid();
+  renderStage();
+}
+
+// ============================================================
+//  カードグリッド描画
+// ============================================================
+function renderCardGrid() {
+  // イベントを一旦外してから再構築
+  cardGrid.removeEventListener("click",  handleCardClick);
+  cardGrid.removeEventListener("input",  handleCardInput);
+
+  cardGrid.innerHTML = "";
+  emptyHint.style.display = characters.length === 0 ? "block" : "none";
+
+  characters.forEach(char => {
+    const card = document.createElement("div");
+    card.className = "char-card";
+    card.dataset.id = char.id;
+
+    const thumbHTML = char.imgURL
+      ? `<img src="${char.imgURL}" alt="">`
+      : `<div class="char-thumb-placeholder">
+           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+             <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/>
+             <circle cx="7.5" cy="8.5" r="1.5" fill="currentColor"/>
+             <path d="M2 14l4-4 3 3 3-3 6 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+           </svg>
+           <span>画像を選択</span>
+         </div>`;
+
+    card.innerHTML = `
+      <button class="char-delete-btn" data-del="${char.id}" title="削除">✕</button>
+
+      <div class="char-card-header">
+        <div class="char-thumb" data-pick="${char.id}" title="クリックして画像を選択">${thumbHTML}</div>
+        <div class="char-info">
+          <input type="text"   placeholder="名前"        value="${escHtml(char.name)}"     data-field="name"     data-id="${char.id}">
+          <input type="text"   placeholder="シナリオ名"  value="${escHtml(char.scenario)}" data-field="scenario" data-id="${char.id}">
+          <input type="number" placeholder="身長(cm)"    value="${char.height || ''}"       data-field="height"   data-id="${char.id}" min="1" max="300">
+        </div>
+      </div>
+
+      <div class="char-adjust">
+        <label>
+          <span>拡大率</span>
+          <input type="number" value="${char.scale}" step="0.05" min="0.1" max="5" data-field="scale" data-id="${char.id}">
+        </label>
+        <label>
+          <span>縦オフセット(px)</span>
+          <input type="number" value="${char.offsetY}" step="1" min="-500" max="500" data-field="offsetY" data-id="${char.id}">
+        </label>
+      </div>
+    `;
+
+    cardGrid.appendChild(card);
+  });
+
+  cardGrid.addEventListener("click", handleCardClick);
+  cardGrid.addEventListener("input", handleCardInput);
+}
+
+// ============================================================
+//  カードのクリック・入力
+// ============================================================
+function handleCardClick(e) {
+  const delBtn = e.target.closest("[data-del]");
+  if (delBtn) {
+    characters = characters.filter(c => c.id !== Number(delBtn.dataset.del));
+    renderCardGrid();
+    renderStage();
+    return;
+  }
+  const pickEl = e.target.closest("[data-pick]");
+  if (pickEl) {
+    pendingCardId = Number(pickEl.dataset.pick);
+    fileInput.value = "";
+    fileInput.click();
+  }
+}
+
+function handleCardInput(e) {
+  const el = e.target;
+  const id = Number(el.dataset.id);
+  const field = el.dataset.field;
+  if (!id || !field) return;
+  const char = characters.find(c => c.id === id);
+  if (!char) return;
+
+  if (field === "height" || field === "scale" || field === "offsetY") {
+    char[field] = parseFloat(el.value) || 0;
+  } else {
+    char[field] = el.value;
+  }
+  renderStage();
+}
+
+// ============================================================
+//  ファイル入力
+// ============================================================
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files[0];
+  if (!file || pendingCardId === null) return;
+  const char = characters.find(c => c.id === pendingCardId);
+  if (!char) return;
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    char.imgURL = ev.target.result;
+    pendingCardId = null;
+    renderCardGrid();
+    renderStage();
+  };
+  reader.readAsDataURL(file);
+});
+
+// ============================================================
+//  ステージ描画（元JS流用）
+// ============================================================
+function renderStage() {
+  lineupStage.querySelectorAll(".lineup-card").forEach(el => el.remove());
+
+  const valid = characters.filter(c => c.imgURL && c.height > 0);
+  stageEmpty.style.display = valid.length === 0 ? "flex" : "none";
+  statusBar.textContent = `${valid.length}人表示中`;
+  if (valid.length === 0) return;
+
+  const sorted = [...valid].sort((a, b) => b.height - a.height);
+
+  sorted.forEach(char => {
+    const imgH = calcBodyHeight(char.height);
+
+    const card = document.createElement("div");
+    card.className = "lineup-card";
+    card.innerHTML = `
+      <div class="lineup-figure-wrap">
+        <img class="lineup-figure"
+          src="${char.imgURL}"
+          alt="${escHtml(char.name || 'NO NAME')}"
+          style="height:${imgH}px; transform: scale(${char.scale || 1}) translateY(${char.offsetY || 0}px);"
+        >
+      </div>
+      <div class="lineup-label">
+        <div class="lineup-name">${escHtml(char.name || 'NO NAME')}</div>
+        <div class="lineup-sub">
+          ${escHtml(String(char.height))}cm
+          ${char.scenario ? ' / ' + escHtml(char.scenario) : ''}
+        </div>
+      </div>
+    `;
+    lineupStage.appendChild(card);
+  });
+}
+
+// ============================================================
+//  全削除
+// ============================================================
+clearAllBtn.addEventListener("click", () => {
+  if (characters.length === 0) return;
+  if (!confirm("すべてのキャラクターを削除しますか？")) return;
+  characters = [];
+  renderCardGrid();
+  renderStage();
+});
+
+// ============================================================
+//  画像出力（Canvas）
+// ============================================================
+exportBtn.addEventListener("click", async () => {
+  const valid = characters.filter(c => c.imgURL && c.height > 0);
+  if (valid.length === 0) { alert("表示中のキャラクターがいません。"); return; }
+
+  exportBtn.disabled = true;
+  exportBtn.textContent = "生成中...";
+
+  try {
+    await drawExportCanvas(valid);
+    exportModal.classList.add("open");
+  } catch(err) {
+    alert("画像生成に失敗しました: " + err.message);
+    console.error(err);
+  } finally {
+    exportBtn.disabled = false;
+    exportBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 6l3 3 3-3M2 11h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> 画像を出力`;
+  }
+});
+
+async function drawExportCanvas(chars) {
+  const sorted = [...chars].sort((a, b) => b.height - a.height);
+  const maxPx  = getDisplayMaxPx();
+
+  const CARD_W    = 180;
+  const GAP       = 16;
+  const PAD_X     = 36;
+  const PAD_TOP   = 28;
+  const GROUND    = 64;
+  const LABEL_H   = 68;
+  const SCALE_W   = 52;
+  const BOTTOM_PAD = 16;
+
+  const stageH = maxPx + PAD_TOP + GROUND + LABEL_H + BOTTOM_PAD;
+  const stageW = SCALE_W + PAD_X + sorted.length * (CARD_W + GAP) - GAP + PAD_X;
+
+  const canvas = exportCanvas;
+  canvas.width  = stageW;
+  canvas.height = stageH;
+
+  const ctx = canvas.getContext("2d");
+  const groundY = PAD_TOP + maxPx;
+
+  // 背景
+  ctx.fillStyle = "#fffdf9";
+  ctx.fillRect(0, 0, stageW, stageH);
+
+  // グリッドライン
+  for (let cm = 0; cm <= MAX_H_CM; cm += 10) {
+    const y = groundY - cmToPx(cm);
+    ctx.strokeStyle = cm % 50 === 0 ? "rgba(154,118,105,0.20)" : "rgba(154,118,105,0.075)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(SCALE_W, y);
+    ctx.lineTo(stageW, y);
+    ctx.stroke();
+  }
+
+  // 地面ライン
+  ctx.strokeStyle = "rgba(154,118,105,0.34)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(SCALE_W, groundY);
+  ctx.lineTo(stageW, groundY);
+  ctx.stroke();
+
+  // 目盛りテキスト
+  ctx.font = "10px 'Hiragino Sans', 'Yu Gothic', sans-serif";
+  ctx.textAlign = "right";
+  for (let cm = 0; cm <= MAX_H_CM; cm += 10) {
+    const y = groundY - cmToPx(cm);
+    ctx.fillStyle = cm % 50 === 0 ? "rgba(69,55,52,0.68)" : "rgba(143,116,112,0.58)";
+    ctx.fillText(`${cm}`, SCALE_W - 6, y + 4);
+  }
+
+  // 画像の事前ロード
+  const loaded = await Promise.all(sorted.map((char, i) => {
+    return new Promise(res => {
+      const img = new Image();
+      img.onload  = () => res({ img, char, i });
+      img.onerror = () => res({ img: null, char, i });
+      img.src = char.imgURL;
+    });
+  }));
+
+  for (const { img, char, i } of loaded) {
+    const cx = SCALE_W + PAD_X + i * (CARD_W + GAP) + CARD_W / 2;
+    const imgH  = calcBodyHeight(char.height);
+    const scale = char.scale || 1;
+    const offY  = char.offsetY || 0;
+
+    if (img) {
+      const aspect = img.naturalWidth / img.naturalHeight;
+      const drawH  = imgH * scale;
+      const drawW  = drawH * aspect;
+      const drawX  = cx - drawW / 2;
+      const drawY  = groundY - drawH + offY;
+
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
+    }
+
+    // ラベルカード
+    const labelX = cx - CARD_W / 2;
+    const labelY = groundY + GROUND - 8;
+    const lW = CARD_W, lH = LABEL_H;
+
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle = "#ffffff";
+    roundRect(ctx, labelX, labelY, lW, lH, 12); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "rgba(154,118,105,0.18)";
+    ctx.lineWidth = 1;
+    roundRect(ctx, labelX, labelY, lW, lH, 12); ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = "#2f2625";
+    ctx.font = "bold 13px 'Hiragino Sans', 'Yu Gothic', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(char.name || "NO NAME", cx, labelY + 23, CARD_W - 12);
+
+    ctx.fillStyle = "rgba(143,116,112,0.88)";
+    ctx.font = "11px 'Hiragino Sans', 'Yu Gothic', sans-serif";
+    const sub = `${char.height}cm${char.scenario ? ' / ' + char.scenario : ''}`;
+    ctx.fillText(sub, cx, labelY + 44, CARD_W - 12);
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// ============================================================
+//  モーダル・ダウンロード
+// ============================================================
+modalCloseBtn.addEventListener("click", () => exportModal.classList.remove("open"));
+exportModal.addEventListener("click", e => { if (e.target === exportModal) exportModal.classList.remove("open"); });
+
+downloadBtn.addEventListener("click", () => {
+  const link = document.createElement("a");
+  link.download = `tachie-lineup-${Date.now()}.png`;
+  link.href = exportCanvas.toDataURL("image/png");
+  link.click();
+});
+
+// ============================================================
+//  ユーティリティ
+// ============================================================
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// ============================================================
+//  初期化
+// ============================================================
+addCharBtn.addEventListener("click", addCharacter);
+window.addEventListener("resize", () => { buildHeightScale(); renderStage(); });
+
+buildHeightScale();
+renderCardGrid();
+renderStage();
+</script>
+</body>
+</html>
