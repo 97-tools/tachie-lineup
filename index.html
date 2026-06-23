@@ -278,6 +278,43 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(229,140,155,
 
 .char-delete-btn:hover { background: rgba(216,108,115,0.18); transform: rotate(8deg); }
 
+.char-order {
+  position: absolute;
+  top: 10px;
+  right: 43px;
+  display: flex;
+  gap: 5px;
+}
+
+.char-move-btn {
+  width: 27px;
+  height: 27px;
+  border: 1px solid rgba(154,118,105,0.20);
+  background: rgba(255,255,255,0.72);
+  color: var(--muted);
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  transition: background 0.2s, transform 0.15s, color 0.2s;
+}
+
+.char-move-btn:hover:not(:disabled) {
+  background: rgba(229,140,155,0.13);
+  color: var(--text-strong);
+  transform: translateY(-1px);
+}
+
+.char-move-btn:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+
 /* ===== ステージ ===== */
 .stage-wrap {
   position: relative;
@@ -390,7 +427,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(229,140,155,
 .lineup-label {
   position: absolute;
   left: 50%;
-  bottom: 12px;
+  bottom: -10px;
   transform: translateX(-50%);
   width: calc(100% + 12px);
   padding: 8px 10px 10px;
@@ -533,6 +570,7 @@ input[type="file"] { display: none; }
 .modal canvas {
   display: block;
   max-width: 100%;
+  height: auto;
   border-radius: 14px;
   border: 1px solid var(--border);
   background: #fffdf9;
@@ -721,7 +759,7 @@ function renderCardGrid() {
   cardGrid.innerHTML = "";
   emptyHint.style.display = characters.length === 0 ? "block" : "none";
 
-  characters.forEach(char => {
+  characters.forEach((char, index) => {
     const card = document.createElement("div");
     card.className = "char-card";
     card.dataset.id = char.id;
@@ -739,6 +777,10 @@ function renderCardGrid() {
 
     card.innerHTML = `
       <button class="char-delete-btn" data-del="${char.id}" title="削除">✕</button>
+      <div class="char-order" aria-label="並び順">
+        <button class="char-move-btn" data-move="up" data-id="${char.id}" title="左へ移動" ${index === 0 ? 'disabled' : ''}>←</button>
+        <button class="char-move-btn" data-move="down" data-id="${char.id}" title="右へ移動" ${index === characters.length - 1 ? 'disabled' : ''}>→</button>
+      </div>
 
       <div class="char-card-header">
         <div class="char-thumb" data-pick="${char.id}" title="クリックして画像を選択">${thumbHTML}</div>
@@ -779,6 +821,23 @@ function handleCardClick(e) {
     renderStage();
     return;
   }
+  const moveBtn = e.target.closest("[data-move]");
+  if (moveBtn) {
+    const id = Number(moveBtn.dataset.id);
+    const dir = moveBtn.dataset.move;
+    const index = characters.findIndex(c => c.id === id);
+    if (index !== -1) {
+      const nextIndex = dir === "up" ? index - 1 : index + 1;
+      if (nextIndex >= 0 && nextIndex < characters.length) {
+        const item = characters.splice(index, 1)[0];
+        characters.splice(nextIndex, 0, item);
+        renderCardGrid();
+        renderStage();
+      }
+    }
+    return;
+  }
+
   const pickEl = e.target.closest("[data-pick]");
   if (pickEl) {
     pendingCardId = Number(pickEl.dataset.pick);
@@ -833,9 +892,9 @@ function renderStage() {
   statusBar.textContent = `${valid.length}人表示中`;
   if (valid.length === 0) return;
 
-  const sorted = [...valid].sort((a, b) => b.height - a.height);
+  const ordered = [...valid];
 
-  sorted.forEach(char => {
+  ordered.forEach(char => {
     const imgH = calcBodyHeight(char.height);
 
     const card = document.createElement("div");
@@ -894,7 +953,7 @@ exportBtn.addEventListener("click", async () => {
 });
 
 async function drawExportCanvas(chars) {
-  const sorted = [...chars].sort((a, b) => b.height - a.height);
+  const sorted = [...chars];
 
   // Web表示サイズに依存しない、高画質出力用の基準サイズ
   const EXPORT_MAX_PX = 900;
@@ -907,7 +966,7 @@ async function drawExportCanvas(chars) {
   const GROUND = 96;
   const LABEL_H = 78;
   const SCALE_W = 62;
-  const BOTTOM_PAD = 22;
+  const BOTTOM_PAD = 46;
 
   const stageH = EXPORT_MAX_PX + PAD_TOP + GROUND + BOTTOM_PAD;
   const stageW = SCALE_W + PAD_X + sorted.length * (CARD_W + GAP) - GAP + PAD_X;
@@ -916,7 +975,7 @@ async function drawExportCanvas(chars) {
   canvas.width = stageW * DPR;
   canvas.height = stageH * DPR;
   canvas.style.width = `${stageW}px`;
-  canvas.style.height = `${stageH}px`;
+  canvas.style.height = "auto";
 
   const ctx = canvas.getContext("2d");
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -984,7 +1043,7 @@ async function drawExportCanvas(chars) {
 
     // ラベルカードは0cmラインより下に配置
     const labelX = cx - CARD_W / 2;
-    const labelY = groundY + 24;
+    const labelY = groundY + 44;
     const lW = CARD_W;
     const lH = LABEL_H;
 
