@@ -29,7 +29,7 @@
   --success: #669f88;
   --shadow: 0 18px 50px rgba(120,78,68,0.12);
   --shadow-soft: 0 10px 24px rgba(120,78,68,0.09);
-  --ground: 64px;
+  --ground: 98px;
   --stage-h: 680px;
   --card-w: 160px;
   --radius: 22px;
@@ -427,7 +427,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(229,140,155,
 .lineup-label {
   position: absolute;
   left: 50%;
-  bottom: -10px;
+  bottom: 14px;
   transform: translateX(-50%);
   width: calc(100% + 12px);
   padding: 8px 10px 10px;
@@ -589,7 +589,7 @@ input[type="file"] { display: none; }
 ::-webkit-scrollbar-track { background: transparent; }
 
 @media (max-width: 640px) {
-  :root { --stage-h: 480px; --card-w: 120px; --ground: 52px; }
+  :root { --stage-h: 480px; --card-w: 120px; --ground: 82px; }
   .app-header { padding: 20px 14px 0; }
   .app-body { padding: 14px 10px 60px; gap: 14px; }
   .add-panel, .stage-section { border-radius: 18px; }
@@ -966,7 +966,7 @@ async function drawExportCanvas(chars) {
   const GROUND = 96;
   const LABEL_H = 78;
   const SCALE_W = 62;
-  const BOTTOM_PAD = 46;
+  const BOTTOM_PAD = 84;
 
   const stageH = EXPORT_MAX_PX + PAD_TOP + GROUND + BOTTOM_PAD;
   const stageW = SCALE_W + PAD_X + sorted.length * (CARD_W + GAP) - GAP + PAD_X;
