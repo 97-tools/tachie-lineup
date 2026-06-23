@@ -29,7 +29,7 @@
   --success: #669f88;
   --shadow: 0 18px 50px rgba(120,78,68,0.12);
   --shadow-soft: 0 10px 24px rgba(120,78,68,0.09);
-  --ground: 98px;
+  --ground: 132px;
   --stage-h: 680px;
   --card-w: 160px;
   --radius: 22px;
@@ -110,7 +110,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(229,140,155,
 
 .stage-section {
   padding: 18px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .add-panel-head,
@@ -427,7 +427,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(229,140,155,
 .lineup-label {
   position: absolute;
   left: 50%;
-  bottom: 14px;
+  bottom: 18px;
   transform: translateX(-50%);
   width: calc(100% + 12px);
   padding: 8px 10px 10px;
@@ -589,7 +589,7 @@ input[type="file"] { display: none; }
 ::-webkit-scrollbar-track { background: transparent; }
 
 @media (max-width: 640px) {
-  :root { --stage-h: 480px; --card-w: 120px; --ground: 82px; }
+  :root { --stage-h: 480px; --card-w: 120px; --ground: 126px; }
   .app-header { padding: 20px 14px 0; }
   .app-body { padding: 14px 10px 60px; gap: 14px; }
   .add-panel, .stage-section { border-radius: 18px; }
@@ -963,7 +963,7 @@ async function drawExportCanvas(chars) {
   const GAP = 24;
   const PAD_X = 48;
   const PAD_TOP = 36;
-  const GROUND = 96;
+  const GROUND = 132;
   const LABEL_H = 78;
   const SCALE_W = 62;
   const BOTTOM_PAD = 84;
