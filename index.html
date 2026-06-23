@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>立ち絵身長比較ツール</title>
+<title>立ち絵比較メーカー</title>
 <style>
 /* ===========================
    リセット・ベース
@@ -315,7 +315,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(229,140,155,
 .lineup-stage {
   position: relative;
   min-height: calc(var(--stage-h) + var(--ground));
-  padding: 20px 28px var(--ground);
+  padding: 20px 28px 0;
   border: 1px solid var(--border-strong);
   border-radius: 20px;
   background:
@@ -355,21 +355,22 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(229,140,155,
 .lineup-card {
   flex: 0 0 auto;
   width: var(--card-w);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  height: calc(var(--stage-h) + var(--ground));
   position: relative;
   z-index: 3;
 }
 
 .lineup-figure-wrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--ground);
   width: 100%;
   height: var(--stage-h);
   display: flex;
   justify-content: center;
   align-items: flex-end;
   overflow: visible;
-  position: relative;
 }
 
 .lineup-figure {
@@ -387,16 +388,18 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(229,140,155,
 }
 
 .lineup-label {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
   width: calc(100% + 12px);
-  margin-top: 10px;
   padding: 8px 10px 10px;
   border: 1px solid rgba(154,118,105,0.16);
   border-radius: 15px;
-  background: rgba(255,255,255,0.86);
+  background: rgba(255,255,255,0.88);
   text-align: center;
   backdrop-filter: blur(8px);
   box-shadow: 0 9px 18px rgba(120,78,68,0.10);
-  flex-shrink: 0;
 }
 
 .lineup-name {
@@ -673,6 +676,15 @@ function calcBodyHeight(cm) {
   return Math.round(cmToPx(cm) * SCALE_FACTOR);
 }
 
+function cmToPxFor(cm, maxPx) {
+  const clamped = Math.max(0, Math.min(Number(cm) || 0, MAX_H_CM));
+  return Math.round((clamped / MAX_H_CM) * maxPx);
+}
+
+function calcBodyHeightFor(cm, maxPx) {
+  return Math.round(cmToPxFor(cm, maxPx) * SCALE_FACTOR);
+}
+
 // ============================================================
 //  目盛り（元JS流用）
 // ============================================================
@@ -682,8 +694,7 @@ function buildHeightScale() {
     const bottomPx = cmToPx(cm);
     const mark = document.createElement("div");
     mark.className = "scale-mark";
-    const adj = cm === 0 ? 10 : 0;
-    mark.style.bottom = `${bottomPx + adj}px`;
+    mark.style.bottom = `${bottomPx}px`;
     mark.innerHTML = `<span>${cm}</span>`;
     heightScale.appendChild(mark);
   }
@@ -884,34 +895,43 @@ exportBtn.addEventListener("click", async () => {
 
 async function drawExportCanvas(chars) {
   const sorted = [...chars].sort((a, b) => b.height - a.height);
-  const maxPx  = getDisplayMaxPx();
 
-  const CARD_W    = 180;
-  const GAP       = 16;
-  const PAD_X     = 36;
-  const PAD_TOP   = 28;
-  const GROUND    = 64;
-  const LABEL_H   = 68;
-  const SCALE_W   = 52;
-  const BOTTOM_PAD = 16;
+  // Web表示サイズに依存しない、高画質出力用の基準サイズ
+  const EXPORT_MAX_PX = 900;
+  const DPR = 2;
 
-  const stageH = maxPx + PAD_TOP + GROUND + LABEL_H + BOTTOM_PAD;
+  const CARD_W = 220;
+  const GAP = 24;
+  const PAD_X = 48;
+  const PAD_TOP = 36;
+  const GROUND = 96;
+  const LABEL_H = 78;
+  const SCALE_W = 62;
+  const BOTTOM_PAD = 22;
+
+  const stageH = EXPORT_MAX_PX + PAD_TOP + GROUND + BOTTOM_PAD;
   const stageW = SCALE_W + PAD_X + sorted.length * (CARD_W + GAP) - GAP + PAD_X;
 
   const canvas = exportCanvas;
-  canvas.width  = stageW;
-  canvas.height = stageH;
+  canvas.width = stageW * DPR;
+  canvas.height = stageH * DPR;
+  canvas.style.width = `${stageW}px`;
+  canvas.style.height = `${stageH}px`;
 
   const ctx = canvas.getContext("2d");
-  const groundY = PAD_TOP + maxPx;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  const groundY = PAD_TOP + EXPORT_MAX_PX;
 
   // 背景
   ctx.fillStyle = "#fffdf9";
   ctx.fillRect(0, 0, stageW, stageH);
 
-  // グリッドライン
+  // うっすらしたグリッド
   for (let cm = 0; cm <= MAX_H_CM; cm += 10) {
-    const y = groundY - cmToPx(cm);
+    const y = groundY - cmToPxFor(cm, EXPORT_MAX_PX);
     ctx.strokeStyle = cm % 50 === 0 ? "rgba(154,118,105,0.20)" : "rgba(154,118,105,0.075)";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -920,28 +940,28 @@ async function drawExportCanvas(chars) {
     ctx.stroke();
   }
 
-  // 地面ライン
+  // 0cmライン
   ctx.strokeStyle = "rgba(154,118,105,0.34)";
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(SCALE_W, groundY);
   ctx.lineTo(stageW, groundY);
   ctx.stroke();
 
-  // 目盛りテキスト
-  ctx.font = "10px 'Hiragino Sans', 'Yu Gothic', sans-serif";
+  // 目盛り
+  ctx.font = "12px 'Hiragino Sans', 'Yu Gothic', sans-serif";
   ctx.textAlign = "right";
   for (let cm = 0; cm <= MAX_H_CM; cm += 10) {
-    const y = groundY - cmToPx(cm);
+    const y = groundY - cmToPxFor(cm, EXPORT_MAX_PX);
     ctx.fillStyle = cm % 50 === 0 ? "rgba(69,55,52,0.68)" : "rgba(143,116,112,0.58)";
-    ctx.fillText(`${cm}`, SCALE_W - 6, y + 4);
+    ctx.fillText(`${cm}`, SCALE_W - 8, y + 4);
   }
 
   // 画像の事前ロード
   const loaded = await Promise.all(sorted.map((char, i) => {
     return new Promise(res => {
       const img = new Image();
-      img.onload  = () => res({ img, char, i });
+      img.onload = () => res({ img, char, i });
       img.onerror = () => res({ img: null, char, i });
       img.src = char.imgURL;
     });
@@ -949,44 +969,44 @@ async function drawExportCanvas(chars) {
 
   for (const { img, char, i } of loaded) {
     const cx = SCALE_W + PAD_X + i * (CARD_W + GAP) + CARD_W / 2;
-    const imgH  = calcBodyHeight(char.height);
+    const imgH = calcBodyHeightFor(char.height, EXPORT_MAX_PX);
     const scale = char.scale || 1;
-    const offY  = char.offsetY || 0;
+    const offY = char.offsetY || 0;
 
     if (img) {
       const aspect = img.naturalWidth / img.naturalHeight;
-      const drawH  = imgH * scale;
-      const drawW  = drawH * aspect;
-      const drawX  = cx - drawW / 2;
-      const drawY  = groundY - drawH + offY;
-
+      const drawH = imgH * scale;
+      const drawW = drawH * aspect;
+      const drawX = cx - drawW / 2;
+      const drawY = groundY - drawH + offY;
       ctx.drawImage(img, drawX, drawY, drawW, drawH);
     }
 
-    // ラベルカード
+    // ラベルカードは0cmラインより下に配置
     const labelX = cx - CARD_W / 2;
-    const labelY = groundY + GROUND - 8;
-    const lW = CARD_W, lH = LABEL_H;
+    const labelY = groundY + 24;
+    const lW = CARD_W;
+    const lH = LABEL_H;
 
     ctx.save();
-    ctx.globalAlpha = 0.92;
     ctx.fillStyle = "#ffffff";
-    roundRect(ctx, labelX, labelY, lW, lH, 12); ctx.fill();
-    ctx.globalAlpha = 1;
+    roundRect(ctx, labelX, labelY, lW, lH, 16);
+    ctx.fill();
     ctx.strokeStyle = "rgba(154,118,105,0.18)";
     ctx.lineWidth = 1;
-    roundRect(ctx, labelX, labelY, lW, lH, 12); ctx.stroke();
+    roundRect(ctx, labelX, labelY, lW, lH, 16);
+    ctx.stroke();
     ctx.restore();
 
     ctx.fillStyle = "#2f2625";
-    ctx.font = "bold 13px 'Hiragino Sans', 'Yu Gothic', sans-serif";
+    ctx.font = "bold 16px 'Hiragino Sans', 'Yu Gothic', sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(char.name || "NO NAME", cx, labelY + 23, CARD_W - 12);
+    ctx.fillText(char.name || "NO NAME", cx, labelY + 30, CARD_W - 18);
 
     ctx.fillStyle = "rgba(143,116,112,0.88)";
-    ctx.font = "11px 'Hiragino Sans', 'Yu Gothic', sans-serif";
+    ctx.font = "13px 'Hiragino Sans', 'Yu Gothic', sans-serif";
     const sub = `${char.height}cm${char.scenario ? ' / ' + char.scenario : ''}`;
-    ctx.fillText(sub, cx, labelY + 44, CARD_W - 12);
+    ctx.fillText(sub, cx, labelY + 54, CARD_W - 18);
   }
 }
 
